@@ -1,0 +1,127 @@
+
+
+<div id="heteroskedasticity" class="section level3">
+<h3>Heteroskedasticity</h3>
+<pre class="r"><code>ggplot(data = df3,aes(x=Xhat,y=df3[,1])) + geom_point() + geom_smooth(method=&quot;lm&quot;) +ylab(&quot;Y&quot;)+
+  ggtitle(&quot;Proportional Heteroskedasticity&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<pre class="r"><code>coefs</code></pre>
+<pre><code>## [1]  1.3870739 -0.4968452 -0.7703594  0.4585947  1.7748403</code></pre>
+<p>Suppose we used a log transformation</p>
+<pre class="r"><code>mod2 &lt;- lm(log(Y) ~ .,data=df3)
+Xhat2 &lt;- predict.lm(mod2,df3[,2:(p+1)])
+
+ggplot(data = df3,aes(x=Xhat2,y=log(df3[,1]))) + geom_point() + geom_smooth(method=&quot;lm&quot;) +ylab(&quot;log(Y)&quot;)+
+  ggtitle(&quot;Log Transformation&quot;)+xlab(&quot;Y-hat&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="simulating-the-bias-of-log-transform" class="section level2">
+<h2>Simulating the Bias of Log Transform</h2>
+<pre class="r"><code>N &lt;- 10000
+
+
+
+n &lt;- 500
+p &lt;- 3
+
+alpha_a &lt;- 0
+
+betas_het &lt;- matrix(nrow = N, ncol = p+1,0)
+betas_log &lt;- matrix(nrow = N, ncol = p+1,0)
+marg_effect_log &lt;- vector(&quot;list&quot;,length = N)
+
+
+coefs &lt;- c(1,2,3)
+
+sigmas = runif(p,min=sig_x1,max = sig_x2)
+  P &lt;- qr.Q(qr(matrix(rnorm(p^2), p)))
+  Covmat2 &lt;- crossprod(P,P*sigmas)
+  
+  alpha &lt;- 100
+
+for(i in 1:N){
+
+df2 &lt;- het_sim1(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+
+df3 &lt;- as.data.frame(df2[[1]])
+
+mod1 &lt;- lm(Y ~ ., data =df3)
+mod2 &lt;- lm(log(Y)~.,data=df3)
+
+betas_het[i,] &lt;- coef(mod1)
+betas_log[i,] &lt;- coef(mod2)
+
+Xhat &lt;- predict.lm(mod2,df3[,2:(p+1)])
+
+marg_effect_log[[i]] &lt;- exp(log(df3[,1]))%*%t(coef(mod2))
+
+}
+  
+  
+sv &lt;- lapply(marg_effect_log,function(x){
+  apply(x,2,mean,na.rm=TRUE)
+}
+)
+
+sv1 &lt;- lapply(marg_effect_log,function(x){
+  apply(x,2,mean)
+}
+)
+
+sv_mat &lt;- matrix(unlist(sv),nrow=N,ncol=4,byrow=TRUE)
+
+sv1_mat &lt;- matrix(unlist(sv1),nrow=N,ncol=4,byrow=TRUE)
+
+
+jit &lt;- runif(nrow(sv_mat),0,1)
+
+lv &lt;- apply(sv_mat,2,function(x){
+  data.frame(mfx = x,type=&quot;Ignore NA&quot;, jit)
+})
+
+for(i in 1:4){
+  lv[[i]] &lt;- data.frame(lv[[i]], var = paste0(&quot;X_&quot;,(i-1)))
+}
+
+lv1 &lt;- apply(sv1_mat,2,function(x){
+  data.frame(mfx = x,type=&quot;NA&quot;,jit)
+})
+
+for(i in 1:4){
+  lv1[[i]] &lt;- data.frame(lv1[[i]], var = paste0(&quot;X_&quot;,(i-1)))
+}
+
+
+svgg &lt;- do.call(rbind,lv)
+svgg1 &lt;- do.call(rbind,lv1)
+
+gg &lt;- rbind(svgg,svgg1)
+
+require(plyr)</code></pre>
+<pre><code>## Loading required package: plyr</code></pre>
+<pre class="r"><code>gg$truth &lt;- mapvalues(gg$var,from = c(&quot;X_0&quot;,&quot;X_1&quot;,&quot;X_2&quot;,&quot;X_3&quot;),to = c(alpha,coefs))
+gg$truth &lt;- as.numeric(as.character(gg$truth))
+
+#### Notes to self
+
+# This graph above is not really good. It would be better if we could get them side by side, maybe there are too many simulations.
+# Need to also visualize the true underlying coefficients.</code></pre>
+<pre class="r"><code>ggplot(gg[which(gg$var!=&quot;X_0&quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+scale_y_continuous(limits=c(-3,6))+geom_hline(aes(yintercept=truth,color=var))+ stat_summary(fun.y=median, geom=&quot;point&quot;, shape=23, size=1,color=&quot;red&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(gg[which(gg$var==&quot;X_3&quot;&amp;gg$type==&quot;NA&quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&quot;point&quot;, shape=23, size=1,color=&quot;red&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-2.png" width="672" /></p>
+<pre class="r"><code>ggplot(gg[which(gg$var!=&quot;X_0&quot;&amp;gg$type==&quot;NA&quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&quot;point&quot;, shape=23, size=1,color=&quot;red&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-3.png" width="672" /></p>
+<pre class="r"><code>ggplot(gg[which(gg$var!=&quot;X_0&quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&quot;point&quot;, shape=23, size=1,color=&quot;red&quot;)</code></pre>
+<p><img src="2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-4.png" width="672" /></p>
+<pre class="r"><code>aggregate(gg$mfx, by =list(gg$var,gg$type), mean, na.rm=TRUE)</code></pre>
+<pre><code>##   Group.1   Group.2           x
+## 1     X_0 Ignore NA 462.1959455
+## 2     X_1 Ignore NA   0.9911553
+## 3     X_2 Ignore NA   1.9778713
+## 4     X_3 Ignore NA   2.9627848
+## 5     X_0        NA 462.2900122
+## 6     X_1        NA   0.9910468
+## 7     X_2        NA   1.9776852
+## 8     X_3        NA   2.9626127</code></pre>
+</div>

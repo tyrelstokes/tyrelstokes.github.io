@@ -1,0 +1,349 @@
+---
+title: Heteroskedasticity
+author: Tyrel Stokes
+date: '2019-05-16'
+slug: heteroskedasticity
+categories:
+  - Causal Inference
+  - Model Selection
+tags:
+  - Academic
+  - regression
+  - plot
+  - model selection
+  - heteroskedasticity
+image:
+  caption: ''
+  focal_point: ''
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE)
+```
+
+
+### Heteroskedasticity 
+
+```{r, include =FALSE}
+require(mvtnorm)
+require(ggplot2)
+require(ggthemes)
+
+
+het_sim1 <- function(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel, alpha, Covmat){
+  
+ X <- rmvnorm(n,mean = rnorm(p,0,sig_mean),sigma = Covmat)
+ 
+ XB <- X%*%coefs
+ 
+ sigvec <- ((XB - min(XB))/(max(XB)-min(XB)))*(sig_n - sig_0) + sig_0
+  
+ u <- rnorm(n,0,sigvec)
+ 
+ Y <- alpha + XB + u
+ 
+
+ 
+ out <- vector("list", length=2)
+ out[[1]] <- data.frame(Y,X)
+ out[[2]] <- X
+ 
+ return(out)
+
+}
+```
+
+
+
+
+```{r, include = FALSE}
+n <- 2500
+p <- 5
+
+sig_x1 <- 1
+sig_x2 <- 3
+
+sig_mean <- 6
+
+sig_0 <- 1
+sig_n <- 10
+
+coefs <- rnorm(p,0,2)
+
+alpha <- 100
+
+sigmas = runif(p,min=sig_x1,max = sig_x2)
+  P <- qr.Q(qr(matrix(rnorm(p^2), p)))
+  Covmat <- crossprod(P,P*sigmas)
+
+df2 <- het_sim1(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha,Covmat)
+
+df3 <- as.data.frame(df2[[1]])
+
+mod1 <- lm(Y ~ ., data =df3)
+
+Xhat <- predict.lm(mod1,df3[,2:(p+1)])
+
+
+```
+
+
+```{r}
+
+
+ggplot(data = df3,aes(x=Xhat,y=df3[,1])) + geom_point() + geom_smooth(method="lm") +ylab("Y")+
+  ggtitle("Proportional Heteroskedasticity")
+
+coefs
+```
+
+
+
+
+
+Suppose we used a log transformation
+
+```{r}
+mod2 <- lm(log(Y) ~ .,data=df3)
+Xhat2 <- predict.lm(mod2,df3[,2:(p+1)])
+
+ggplot(data = df3,aes(x=Xhat2,y=log(df3[,1]))) + geom_point() + geom_smooth(method="lm") +ylab("log(Y)")+
+  ggtitle("Log Transformation")+xlab("Y-hat")
+```
+
+
+
+
+## Simulating the Bias of Log Transform
+
+```{r}
+N <- 10000
+
+
+
+n <- 500
+p <- 3
+
+alpha_a <- 0
+
+betas_het <- matrix(nrow = N, ncol = p+1,0)
+betas_log <- matrix(nrow = N, ncol = p+1,0)
+marg_effect_log <- vector("list",length = N)
+
+
+coefs <- c(1,2,3)
+
+sigmas = runif(p,min=sig_x1,max = sig_x2)
+  P <- qr.Q(qr(matrix(rnorm(p^2), p)))
+  Covmat2 <- crossprod(P,P*sigmas)
+  
+  alpha <- 100
+
+for(i in 1:N){
+
+df2 <- het_sim1(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+
+df3 <- as.data.frame(df2[[1]])
+
+mod1 <- lm(Y ~ ., data =df3)
+mod2 <- lm(log(Y)~.,data=df3)
+
+betas_het[i,] <- coef(mod1)
+betas_log[i,] <- coef(mod2)
+
+Xhat <- predict.lm(mod2,df3[,2:(p+1)])
+
+marg_effect_log[[i]] <- exp(log(df3[,1]))%*%t(coef(mod2))
+
+}
+  
+  
+sv <- lapply(marg_effect_log,function(x){
+  apply(x,2,mean,na.rm=TRUE)
+}
+)
+
+sv1 <- lapply(marg_effect_log,function(x){
+  apply(x,2,mean)
+}
+)
+
+sv_mat <- matrix(unlist(sv),nrow=N,ncol=4,byrow=TRUE)
+
+sv1_mat <- matrix(unlist(sv1),nrow=N,ncol=4,byrow=TRUE)
+
+
+jit <- runif(nrow(sv_mat),0,1)
+
+lv <- apply(sv_mat,2,function(x){
+  data.frame(mfx = x,type="Ignore NA", jit)
+})
+
+for(i in 1:4){
+  lv[[i]] <- data.frame(lv[[i]], var = paste0("X_",(i-1)))
+}
+
+lv1 <- apply(sv1_mat,2,function(x){
+  data.frame(mfx = x,type="NA",jit)
+})
+
+for(i in 1:4){
+  lv1[[i]] <- data.frame(lv1[[i]], var = paste0("X_",(i-1)))
+}
+
+
+svgg <- do.call(rbind,lv)
+svgg1 <- do.call(rbind,lv1)
+
+gg <- rbind(svgg,svgg1)
+
+require(plyr)
+
+gg$truth <- mapvalues(gg$var,from = c("X_0","X_1","X_2","X_3"),to = c(alpha,coefs))
+gg$truth <- as.numeric(as.character(gg$truth))
+
+#### Notes to self
+
+# This graph above is not really good. It would be better if we could get them side by side, maybe there are too many simulations.
+# Need to also visualize the true underlying coefficients.
+
+```
+
+
+
+```{r}
+ggplot(gg[which(gg$var!="X_0"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+scale_y_continuous(limits=c(-3,6))+geom_hline(aes(yintercept=truth,color=var))+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
+
+ggplot(gg[which(gg$var=="X_3"&gg$type=="NA"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
+
+ggplot(gg[which(gg$var!="X_0"&gg$type=="NA"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
+
+ggplot(gg[which(gg$var!="X_0"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
+
+aggregate(gg$mfx, by =list(gg$var,gg$type), mean, na.rm=TRUE)
+
+
+```
+
+
+
+```{r, include=FALSE}
+
+require(lmtest)
+require(sandwich)
+N <- 5000
+
+
+
+n1 <- 25
+n2 <- 100
+n3 <- 500
+n4 <- 5000
+
+p <- 3
+
+alpha_a <- 0
+
+betas_het1 <- matrix(nrow = N, ncol = p+1,0)
+betas_het2 <- matrix(nrow = N, ncol = p+1,0)
+betas_het3 <- matrix(nrow = N, ncol = p+1,0)
+betas_het4 <- matrix(nrow = N, ncol = p+1,0)
+
+
+
+
+coefs <- c(1,2,3)
+
+sigmas = runif(p,min=sig_x1,max = sig_x2)
+  P <- qr.Q(qr(matrix(rnorm(p^2), p)))
+  Covmat2 <- crossprod(P,P*sigmas)
+  
+  alpha <- 50
+
+  tol <- .0001
+  
+  wald <- matrix(nrow=N,ncol=4)
+  
+  
+sig_hetse1 <- matrix(nrow=N,ncol=4)
+sig_hetse2<- matrix(nrow=N,ncol=4)
+sig_hetse3<- matrix(nrow=N,ncol=4)
+sig_hetse4<- matrix(nrow=N,ncol=4)
+
+sig_se1<- matrix(nrow=N,ncol=4)
+sig_se2<- matrix(nrow=N,ncol=4)
+sig_se3<- matrix(nrow=N,ncol=4)
+sig_se4<- matrix(nrow=N,ncol=4)
+  
+for(i in 1623:N){
+
+df2 <- het_sim1(n1,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+df2_2 <- het_sim1(n2,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+df2_3 <- het_sim1(n3,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+df2_4 <- het_sim1(n4,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
+
+
+df3 <- as.data.frame(df2[[1]])
+df3_2 <- as.data.frame(df2_2[[1]])
+df3_3 <- as.data.frame(df2_3[[1]])
+df3_4 <- as.data.frame(df2_4[[1]])
+
+mod1 <- lm(Y ~ ., data =df3)
+mod2 <- lm(Y ~ ., data =df3_2)
+mod3 <- lm(Y ~ ., data =df3_3)
+mod4 <- lm(Y ~ ., data =df3_4)
+
+Omega1 <- diag(((residuals(mod1))^2)*((n1/(n1-4))))
+Omega2 <- diag(sqrt((residuals(mod2))^2))
+Omega3 <- diag(sqrt((residuals(mod3))^2))
+Omega4 <- diag(sqrt((residuals(mod4))^2))
+
+
+vcov1 <- vcovHC(mod1,type="HC1")
+vcov2 <-  vcovHC(mod2,type="HC1")
+vcov3 <- vcovHC(mod3,type="HC1")
+vcov4 <-  vcovHC(mod4,type="HC1")
+
+wald[i,1] <- t(coef(mod1)- c(alpha,coefs))%*%solve(vcov1)%*%(coef(mod1)- c(alpha,coefs))
+wald[i,2] <- t(coef(mod2)- c(alpha,coefs))%*%solve(vcov2)%*%(coef(mod2)- c(alpha,coefs))
+wald[i,3] <- t(coef(mod3)- c(alpha,coefs))%*%solve(vcov3)%*%(coef(mod3)- c(alpha,coefs))
+wald[i,4] <- t(coef(mod4)- c(alpha,coefs))%*%solve(vcov4)%*%(coef(mod4)- c(alpha,coefs))
+
+
+betas_het1[i,] <- coef(mod1)
+betas_het2[i,] <- coef(mod2)
+betas_het3[i,] <- coef(mod3)
+betas_het4[i,] <- coef(mod4)
+
+
+sig_hetse1[i,] <- coeftest(mod1,vcov.=vcovHC(mod1,type="HC1"))[,2]
+sig_hetse2[i,] <- coeftest(mod1,vcov.=vcovHC(mod2,type="HC1"))[,2]
+sig_hetse3[i,] <- coeftest(mod1,vcov.=vcovHC(mod3,type="HC1"))[,2]
+sig_hetse4[i,] <- coeftest(mod1,vcov.=vcovHC(mod4,type="HC1"))[,2]
+
+sig_se1[i,] <- sqrt(diag(vcov(mod1)))
+sig_se2[i,] <- sqrt(diag(vcov(mod2)))
+sig_se3[i,] <- sqrt(diag(vcov(mod3)))
+sig_se4[i,] <- sqrt(diag(vcov(mod4)))
+}
+  
+  
+  
+
+apply(sig_se1,2,mean)
+apply(sig_se2,2,mean)
+apply(sig_se3,2,mean)
+apply(sig_se4,2,mean)
+
+apply(sig_hetse1,2,mean)
+apply(sig_hetse2,2,mean)
+apply(sig_hetse3,2,mean)
+apply(sig_hetse4,2,mean)
+
+
+
+  apply(betas_het1,2,mean)
+  apply(betas_het2,2,mean)
+  
+
+```
