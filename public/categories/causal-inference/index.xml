@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Causal Inference on Tyrel J.M Stokes</title>
+    <link>/categories/causal-inference/</link>
+    <description>Recent content in Causal Inference on Tyrel J.M Stokes</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 16 May 2019 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/categories/causal-inference/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Heteroskedasticity</title>
+      <link>/post/heteroskedasticity/</link>
+      <pubDate>Thu, 16 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/post/heteroskedasticity/</guid>
+      <description>Heteroskedasticityggplot(data = df3,aes(x=Xhat,y=df3[,1])) + geom_point() + geom_smooth(method=&amp;quot;lm&amp;quot;) +ylab(&amp;quot;Y&amp;quot;)+ggtitle(&amp;quot;Proportional Heteroskedasticity&amp;quot;)coefs## [1] -0.4676886 1.4952495 1.7817561 1.2779524 -2.3276220Suppose we used a log transformation
+mod2 &amp;lt;- lm(log(Y) ~ .,data=df3)Xhat2 &amp;lt;- predict.lm(mod2,df3[,2:(p+1)])ggplot(data = df3,aes(x=Xhat2,y=log(df3[,1]))) + geom_point() + geom_smooth(method=&amp;quot;lm&amp;quot;) +ylab(&amp;quot;log(Y)&amp;quot;)+ggtitle(&amp;quot;Log Transformation&amp;quot;)+xlab(&amp;quot;Y-hat&amp;quot;)Simulating the Bias of Log TransformN &amp;lt;- 10000n &amp;lt;- 500p &amp;lt;- 3alpha_a &amp;lt;- 0betas_het &amp;lt;- matrix(nrow = N, ncol = p+1,0)betas_log &amp;lt;- matrix(nrow = N, ncol = p+1,0)marg_effect_log &amp;lt;- vector(&amp;quot;list&amp;quot;,length = N)coefs &amp;lt;- c(1,2,3)sigmas = runif(p,min=sig_x1,max = sig_x2)P &amp;lt;- qr.</description>
+    </item>
+    
+  </channel>
+</rss>
