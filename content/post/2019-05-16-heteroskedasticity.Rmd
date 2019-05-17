@@ -15,6 +15,7 @@ tags:
 image:
   caption: ''
   focal_point: ''
+draft: true
 ---
 
 ```{r setup, include=FALSE}
@@ -56,7 +57,7 @@ het_sim1 <- function(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel, alpha, C
 
 
 
-```{r, include = FALSE}
+```{r, eval=FALSE}
 n <- 2500
 p <- 5
 
@@ -88,7 +89,7 @@ Xhat <- predict.lm(mod1,df3[,2:(p+1)])
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 
 
 ggplot(data = df3,aes(x=Xhat,y=df3[,1])) + geom_point() + geom_smooth(method="lm") +ylab("Y")+
@@ -103,7 +104,7 @@ coefs
 
 Suppose we used a log transformation
 
-```{r}
+```{r,eval=FALSE}
 mod2 <- lm(log(Y) ~ .,data=df3)
 Xhat2 <- predict.lm(mod2,df3[,2:(p+1)])
 
@@ -116,7 +117,7 @@ ggplot(data = df3,aes(x=Xhat2,y=log(df3[,1]))) + geom_point() + geom_smooth(meth
 
 ## Simulating the Bias of Log Transform
 
-```{r}
+```{r,eval=FALSE}
 N <- 10000
 
 
@@ -211,7 +212,7 @@ gg$truth <- as.numeric(as.character(gg$truth))
 
 
 
-```{r}
+```{r,eval=FALSE}
 ggplot(gg[which(gg$var!="X_0"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+scale_y_continuous(limits=c(-3,6))+geom_hline(aes(yintercept=truth,color=var))+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
 
 ggplot(gg[which(gg$var=="X_3"&gg$type=="NA"),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom="point", shape=23, size=1,color="red")
@@ -227,7 +228,7 @@ aggregate(gg$mfx, by =list(gg$var,gg$type), mean, na.rm=TRUE)
 
 
 
-```{r, include=FALSE}
+```{r, include=FALSE,eval=FALSE}
 
 require(lmtest)
 require(sandwich)

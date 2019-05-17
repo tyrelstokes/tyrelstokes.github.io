@@ -118,18 +118,42 @@
 
 &lt;div id=&#34;heteroskedasticity&#34; class=&#34;section level3&#34;&gt;
 &lt;h3&gt;Heteroskedasticity&lt;/h3&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;n &amp;lt;- 2500
+p &amp;lt;- 5
+
+sig_x1 &amp;lt;- 1
+sig_x2 &amp;lt;- 3
+
+sig_mean &amp;lt;- 6
+
+sig_0 &amp;lt;- 1
+sig_n &amp;lt;- 10
+
+coefs &amp;lt;- rnorm(p,0,2)
+
+alpha &amp;lt;- 100
+
+sigmas = runif(p,min=sig_x1,max = sig_x2)
+  P &amp;lt;- qr.Q(qr(matrix(rnorm(p^2), p)))
+  Covmat &amp;lt;- crossprod(P,P*sigmas)
+
+df2 &amp;lt;- het_sim1(n,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha,Covmat)
+
+df3 &amp;lt;- as.data.frame(df2[[1]])
+
+mod1 &amp;lt;- lm(Y ~ ., data =df3)
+
+Xhat &amp;lt;- predict.lm(mod1,df3[,2:(p+1)])&lt;/code&gt;&lt;/pre&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(data = df3,aes(x=Xhat,y=df3[,1])) + geom_point() + geom_smooth(method=&amp;quot;lm&amp;quot;) +ylab(&amp;quot;Y&amp;quot;)+
-  ggtitle(&amp;quot;Proportional Heteroskedasticity&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-3-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;coefs&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] -0.4676886  1.4952495  1.7817561  1.2779524 -2.3276220&lt;/code&gt;&lt;/pre&gt;
+  ggtitle(&amp;quot;Proportional Heteroskedasticity&amp;quot;)
+
+coefs&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;Suppose we used a log transformation&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;mod2 &amp;lt;- lm(log(Y) ~ .,data=df3)
 Xhat2 &amp;lt;- predict.lm(mod2,df3[,2:(p+1)])
 
 ggplot(data = df3,aes(x=Xhat2,y=log(df3[,1]))) + geom_point() + geom_smooth(method=&amp;quot;lm&amp;quot;) +ylab(&amp;quot;log(Y)&amp;quot;)+
   ggtitle(&amp;quot;Log Transformation&amp;quot;)+xlab(&amp;quot;Y-hat&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-4-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
 &lt;/div&gt;
 &lt;div id=&#34;simulating-the-bias-of-log-transform&#34; class=&#34;section level2&#34;&gt;
 &lt;h2&gt;Simulating the Bias of Log Transform&lt;/h2&gt;
@@ -213,162 +237,24 @@ svgg1 &amp;lt;- do.call(rbind,lv1)
 
 gg &amp;lt;- rbind(svgg,svgg1)
 
-require(plyr)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## Loading required package: plyr&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;gg$truth &amp;lt;- mapvalues(gg$var,from = c(&amp;quot;X_0&amp;quot;,&amp;quot;X_1&amp;quot;,&amp;quot;X_2&amp;quot;,&amp;quot;X_3&amp;quot;),to = c(alpha,coefs))
+require(plyr)
+
+gg$truth &amp;lt;- mapvalues(gg$var,from = c(&amp;quot;X_0&amp;quot;,&amp;quot;X_1&amp;quot;,&amp;quot;X_2&amp;quot;,&amp;quot;X_3&amp;quot;),to = c(alpha,coefs))
 gg$truth &amp;lt;- as.numeric(as.character(gg$truth))
 
 #### Notes to self
 
 # This graph above is not really good. It would be better if we could get them side by side, maybe there are too many simulations.
 # Need to also visualize the true underlying coefficients.&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+scale_y_continuous(limits=c(-3,6))+geom_hline(aes(yintercept=truth,color=var))+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(gg[which(gg$var==&amp;quot;X_3&amp;quot;&amp;amp;gg$type==&amp;quot;NA&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-2.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;&amp;amp;gg$type==&amp;quot;NA&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-3.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;/post/2019-05-16-heteroskedasticity_files/figure-html/unnamed-chunk-6-4.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;aggregate(gg$mfx, by =list(gg$var,gg$type), mean, na.rm=TRUE)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;##   Group.1   Group.2           x
-## 1     X_0 Ignore NA 463.4844599
-## 2     X_1 Ignore NA   0.9898366
-## 3     X_2 Ignore NA   1.9822507
-## 4     X_3 Ignore NA   2.9722394
-## 5     X_0        NA 463.5538423
-## 6     X_1        NA   0.9898376
-## 7     X_2        NA   1.9822120
-## 8     X_3        NA   2.9721937&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;require(lmtest)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## Loading required package: lmtest&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## Loading required package: zoo&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## 
-## Attaching package: &amp;#39;zoo&amp;#39;&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## The following objects are masked from &amp;#39;package:base&amp;#39;:
-## 
-##     as.Date, as.Date.numeric&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;require(sandwich)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## Loading required package: sandwich&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;N &amp;lt;- 5000
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+scale_y_continuous(limits=c(-3,6))+geom_hline(aes(yintercept=truth,color=var))+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)
 
+ggplot(gg[which(gg$var==&amp;quot;X_3&amp;quot;&amp;amp;gg$type==&amp;quot;NA&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)
 
+ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;&amp;amp;gg$type==&amp;quot;NA&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)
 
-n1 &amp;lt;- 25
-n2 &amp;lt;- 100
-n3 &amp;lt;- 500
-n4 &amp;lt;- 5000
+ggplot(gg[which(gg$var!=&amp;quot;X_0&amp;quot;),],aes(x=var,y=mfx)) +geom_violin(aes(fill=var),alpha=.7,trim=TRUE)+theme_fivethirtyeight() + facet_wrap(~type)+coord_flip()+geom_hline(aes(yintercept=truth,color=var),size=1)+ stat_summary(fun.y=median, geom=&amp;quot;point&amp;quot;, shape=23, size=1,color=&amp;quot;red&amp;quot;)
 
-p &amp;lt;- 3
-
-alpha_a &amp;lt;- 0
-
-betas_het1 &amp;lt;- matrix(nrow = N, ncol = p+1,0)
-betas_het2 &amp;lt;- matrix(nrow = N, ncol = p+1,0)
-betas_het3 &amp;lt;- matrix(nrow = N, ncol = p+1,0)
-betas_het4 &amp;lt;- matrix(nrow = N, ncol = p+1,0)
-
-
-
-
-coefs &amp;lt;- c(1,2,3)
-
-sigmas = runif(p,min=sig_x1,max = sig_x2)
-  P &amp;lt;- qr.Q(qr(matrix(rnorm(p^2), p)))
-  Covmat2 &amp;lt;- crossprod(P,P*sigmas)
-  
-  alpha &amp;lt;- 50
-
-  tol &amp;lt;- .0001
-  
-  wald &amp;lt;- matrix(nrow=N,ncol=4)
-  
-  
-sig_hetse1 &amp;lt;- matrix(nrow=N,ncol=4)
-sig_hetse2&amp;lt;- matrix(nrow=N,ncol=4)
-sig_hetse3&amp;lt;- matrix(nrow=N,ncol=4)
-sig_hetse4&amp;lt;- matrix(nrow=N,ncol=4)
-
-sig_se1&amp;lt;- matrix(nrow=N,ncol=4)
-sig_se2&amp;lt;- matrix(nrow=N,ncol=4)
-sig_se3&amp;lt;- matrix(nrow=N,ncol=4)
-sig_se4&amp;lt;- matrix(nrow=N,ncol=4)
-  
-for(i in 1623:N){
-
-df2 &amp;lt;- het_sim1(n1,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
-df2_2 &amp;lt;- het_sim1(n2,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
-df2_3 &amp;lt;- het_sim1(n3,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
-df2_4 &amp;lt;- het_sim1(n4,p,sig0,sig_n,sig_x1,sig_x2,sig_mean,coefs,corel,alpha, Covmat2)
-
-
-df3 &amp;lt;- as.data.frame(df2[[1]])
-df3_2 &amp;lt;- as.data.frame(df2_2[[1]])
-df3_3 &amp;lt;- as.data.frame(df2_3[[1]])
-df3_4 &amp;lt;- as.data.frame(df2_4[[1]])
-
-mod1 &amp;lt;- lm(Y ~ ., data =df3)
-mod2 &amp;lt;- lm(Y ~ ., data =df3_2)
-mod3 &amp;lt;- lm(Y ~ ., data =df3_3)
-mod4 &amp;lt;- lm(Y ~ ., data =df3_4)
-
-Omega1 &amp;lt;- diag(((residuals(mod1))^2)*((n1/(n1-4))))
-Omega2 &amp;lt;- diag(sqrt((residuals(mod2))^2))
-Omega3 &amp;lt;- diag(sqrt((residuals(mod3))^2))
-Omega4 &amp;lt;- diag(sqrt((residuals(mod4))^2))
-
-
-vcov1 &amp;lt;- vcovHC(mod1,type=&amp;quot;HC1&amp;quot;)
-vcov2 &amp;lt;-  vcovHC(mod2,type=&amp;quot;HC1&amp;quot;)
-vcov3 &amp;lt;- vcovHC(mod3,type=&amp;quot;HC1&amp;quot;)
-vcov4 &amp;lt;-  vcovHC(mod4,type=&amp;quot;HC1&amp;quot;)
-
-wald[i,1] &amp;lt;- t(coef(mod1)- c(alpha,coefs))%*%solve(vcov1)%*%(coef(mod1)- c(alpha,coefs))
-wald[i,2] &amp;lt;- t(coef(mod2)- c(alpha,coefs))%*%solve(vcov2)%*%(coef(mod2)- c(alpha,coefs))
-wald[i,3] &amp;lt;- t(coef(mod3)- c(alpha,coefs))%*%solve(vcov3)%*%(coef(mod3)- c(alpha,coefs))
-wald[i,4] &amp;lt;- t(coef(mod4)- c(alpha,coefs))%*%solve(vcov4)%*%(coef(mod4)- c(alpha,coefs))
-
-
-betas_het1[i,] &amp;lt;- coef(mod1)
-betas_het2[i,] &amp;lt;- coef(mod2)
-betas_het3[i,] &amp;lt;- coef(mod3)
-betas_het4[i,] &amp;lt;- coef(mod4)
-
-
-sig_hetse1[i,] &amp;lt;- coeftest(mod1,vcov.=vcovHC(mod1,type=&amp;quot;HC1&amp;quot;))[,2]
-sig_hetse2[i,] &amp;lt;- coeftest(mod1,vcov.=vcovHC(mod2,type=&amp;quot;HC1&amp;quot;))[,2]
-sig_hetse3[i,] &amp;lt;- coeftest(mod1,vcov.=vcovHC(mod3,type=&amp;quot;HC1&amp;quot;))[,2]
-sig_hetse4[i,] &amp;lt;- coeftest(mod1,vcov.=vcovHC(mod4,type=&amp;quot;HC1&amp;quot;))[,2]
-
-sig_se1[i,] &amp;lt;- sqrt(diag(vcov(mod1)))
-sig_se2[i,] &amp;lt;- sqrt(diag(vcov(mod2)))
-sig_se3[i,] &amp;lt;- sqrt(diag(vcov(mod3)))
-sig_se4[i,] &amp;lt;- sqrt(diag(vcov(mod4)))
-}
-  
-  
-  
-
-apply(sig_se1,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_se2,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_se3,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_se4,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_hetse1,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_hetse2,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_hetse3,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;apply(sig_hetse4,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] NA NA NA NA&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;  apply(betas_het1,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] 33.8069976  0.6795765  1.3690002  2.0295850&lt;/code&gt;&lt;/pre&gt;
-&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;  apply(betas_het2,2,mean)&lt;/code&gt;&lt;/pre&gt;
-&lt;pre&gt;&lt;code&gt;## [1] 33.8313848  0.6757452  1.3647326  2.0324069&lt;/code&gt;&lt;/pre&gt;
+aggregate(gg$mfx, by =list(gg$var,gg$type), mean, na.rm=TRUE)&lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 </description>
     </item>
@@ -507,14 +393,6 @@ if porridge == &amp;quot;blueberry&amp;quot;:
 &lt;hr /&gt;
 
 &lt;h2 id=&#34;math&#34;&gt;Math&lt;/h2&gt;
-
-&lt;p&gt;In-line math: $x + y = z$&lt;/p&gt;
-
-&lt;p&gt;Block math:&lt;/p&gt;
-
-&lt;p&gt;$$
-f\left( x \right) = \;\frac{{2\left( {x + 4} \right)\left( {x - 4} \right)}}{{\left( {x + 4} \right)\left( {x + 1} \right)}}
-$$&lt;/p&gt;
 
 &lt;hr /&gt;
 
